@@ -15,7 +15,6 @@
 package e2e
 
 import (
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -23,28 +22,13 @@ import (
 	"github.com/aeraki-framework/double2istio/test/e2e/util"
 )
 
-func TestMain(m *testing.M) {
-	setup()
-	code := m.Run()
-	shutdown()
-	os.Exit(code)
-}
-
-func setup() {
-	util.LabelNamespace("dubbo", "istio-injection=enabled", "")
-	util.KubeApply("dubbo", "../../demo/k8s/zookeeper.yaml", "")
-	util.KubeApply("dubbo", "../../demo/k8s/dubbo-example.yaml", "")
-}
-
-func shutdown() {
-	util.KubeDelete("dubbo", "../../../demo/k8s", "")
-}
-
 func TestCreateServiceEntry(t *testing.T) {
-	util.WaitForDeploymentsReady("dubbo", 10*time.Minute, "")
-
-	//wait 30 seconds for service entries to be created
-	time.Sleep(30 * time.Second)
+	err := util.WaitForDeploymentsReady("dubbo", 10*time.Minute, "")
+	if err != nil {
+		t.Errorf("failed to wait for deployment: %v", err)
+	}
+	//wait 60 seconds for service entries to be created
+	time.Sleep(60 * time.Second)
 
 	serviceEntries, err := util.KubeGetYaml("dubbo", "serviceentry", "", "")
 	if err != nil {
@@ -62,13 +46,14 @@ func TestCreateServiceEntry(t *testing.T) {
 		}
 	}
 
-	serviceEntry, err := util.Shell("kubectl get serviceentry aeraki-org-apache-dubbo-samples-basic-api-demoservice -n dubbo -o=jsonpath='{range .items[*]}{.spec}'")
+	serviceEntry, err := util.Shell("kubectl get serviceentry aeraki-org-apache-dubbo-samples-basic-api-demoservice" +
+		" -n dubbo -o=jsonpath='{range .items[*]}{.spec.endpoints}'")
 	if err != nil {
 		t.Errorf("failed to get serviceentry %v", err)
 	}
-	count := strings.Count(serviceEntry, "org.apache.dubbo.samples.basic.api.DemoService")
+	count := strings.Count(serviceEntry, "address")
 	if count != 2 {
-		t.Errorf("endpoint number is not correct, expect: %v, get %v", 1, count)
+		t.Errorf("endpoint number is not correct, expect: %v, get %v", 2, count)
 	}
 }
 
@@ -79,13 +64,13 @@ func TestDeleteServiceEntry(t *testing.T) {
 	}
 
 	//wait 60 seconds for the endpoint to be deleted
-	time.Sleep(60 * time.Second)
+	time.Sleep(120 * time.Second)
 
-	serviceEntry, err := util.Shell("kubectl get serviceentry aeraki-org-apache-dubbo-samples-basic-api-demoservice -n dubbo -o=jsonpath='{range .items[*]}{.spec}'")
+	serviceEntry, err := util.Shell("kubectl get serviceentry aeraki-org-apache-dubbo-samples-basic-api-demoservice -n dubbo -o=jsonpath='{range .items[*]}{.spec.endpoints}'")
 	if err != nil {
 		t.Errorf("failed to get serviceentry %v", err)
 	}
-	count := strings.Count(serviceEntry, "org.apache.dubbo.samples.basic.api.DemoService")
+	count := strings.Count(serviceEntry, "address")
 	if count != 1 {
 		t.Errorf("endpoint number is not correct, expect: %v, get %v", 1, count)
 	}
