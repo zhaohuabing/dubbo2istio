@@ -18,9 +18,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/aeraki-framework/double2istio/test/e2e"
+	"github.com/aeraki-mesh/dubbo2istio/test/e2e"
 
-	"github.com/aeraki-framework/double2istio/test/e2e/util"
+	"github.com/aeraki-mesh/dubbo2istio/test/e2e/util"
 )
 
 func TestMain(m *testing.M) {
@@ -31,9 +31,10 @@ func TestMain(m *testing.M) {
 }
 
 func setup() {
+	util.KubeApply("meta-dubbo", "../../../demo/k8s/aeraki-bootstrap-config.yaml", "")
+	util.KubeApply("meta-dubbo", "../../../demo/k8s/zk/zookeeper.yaml", "")
 	util.LabelNamespace("dubbo", "istio-injection=enabled", "")
-	util.KubeApply("dubbo", "../../../demo/k8s/zk/zookeeper.yaml", "")
-	util.KubeApply("dubbo", "../../../demo/k8s/zk/dubbo-example.yaml", "")
+	util.KubeApply("meta-dubbo", "../../../demo/k8s/zk/dubbo-example.yaml", "")
 }
 
 func shutdown() {
